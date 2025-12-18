@@ -28,12 +28,12 @@ pipeline {
       steps {
         withSonarQubeEnv('SonarQube') {
           withCredentials([string(credentialsId: 'token-sonar', variable: 'TOKEN_SONAR')]) {
-            sh """
+            sh '''
               mvn -B sonar:sonar \
-                -Dsonar.token=$TOKEN_SONAR
+                -Dsonar.token=$TOKEN_SONAR \
                 -Dsonar.projectKey=my-java-app \
                 -Dsonar.projectName=my-java-app
-            """
+            '''
           }
         }
       }
@@ -45,6 +45,15 @@ pipeline {
           waitForQualityGate abortPipeline: true
         }
       }
+    }
+  }
+
+  post {
+    success {
+      echo "✅ Sonar Analysis completed and Quality Gate PASSED"
+    }
+    failure {
+      echo "❌ Pipeline failed (Sonar or Quality Gate issue)"
     }
   }
 }
