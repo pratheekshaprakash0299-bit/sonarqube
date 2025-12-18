@@ -13,7 +13,7 @@ pipeline {
     VERSION       = "1.0.${BUILD_NUMBER}"
 
     NEXUS_URL     = "http://65.1.86.141:8081"
-    NEXUS_REPO    = "maven_releases"
+    NEXUS_REPO    = "maven-releases"
 
     DEPLOY_DIR    = "/opt/app"
   }
