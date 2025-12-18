@@ -12,7 +12,7 @@ pipeline {
     ARTIFACT_ID   = "my-java-app"
     VERSION       = "1.0.${BUILD_NUMBER}"
 
-    NEXUS_URL     = "http://localhost:8081"
+    NEXUS_URL     = "http://65.1.86.141:8081"
     NEXUS_REPO    = "maven_releases"
 
     DEPLOY_DIR    = "/opt/app"
