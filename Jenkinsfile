@@ -21,11 +21,15 @@ pipeline {
   stages {
 
     stage('Checkout') {
-      steps { checkout scm }
+      steps {
+        checkout scm
+      }
     }
 
     stage('Build & Package') {
-      steps { sh 'mvn clean package -DskipTests' }
+      steps {
+        sh 'mvn clean package -DskipTests'
+      }
     }
 
     stage('Sonar Analysis') {
@@ -53,16 +57,14 @@ pipeline {
 
     stage('Upload Artifact to Nexus') {
       steps {
-        withCredentials([usernamePassword(
-          credentialsId: 'nexus-creds',
-          usernameVariable: 'NEXUS_USER',
-          passwordVariable: 'NEXUS_PASS'
+        configFileProvider([configFile(
+          fileId: 'nexus-settings',
+          variable: 'MAVEN_SETTINGS'
         )]) {
           sh '''
             mvn deploy -DskipTests \
-              -DaltDeploymentRepository=nexus::default::${NEXUS_URL}/repository/${NEXUS_REPO} \
-              -Dnexus.username=$NEXUS_USER \
-              -Dnexus.password=$NEXUS_PASS
+              -s $MAVEN_SETTINGS \
+              -DaltDeploymentRepository=nexus::default::${NEXUS_URL}/repository/${NEXUS_REPO}
           '''
         }
       }
@@ -95,7 +97,11 @@ pipeline {
   }
 
   post {
-    success { echo "✅ FULL PIPELINE SUCCESSFUL" }
-    failure { echo "❌ PIPELINE FAILED" }
+    success {
+      echo "✅ FULL PIPELINE SUCCESSFUL"
+    }
+    failure {
+      echo "❌ PIPELINE FAILED"
+    }
   }
 }
