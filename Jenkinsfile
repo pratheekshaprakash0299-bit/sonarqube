@@ -64,7 +64,7 @@ pipeline {
           sh '''
             mvn deploy -DskipTests \
               -s $MAVEN_SETTINGS \
-              -DaltDeploymentRepository=nexus::default::${NEXUS_URL}/repository/${NEXUS_REPO}
+              -DaltDeploymentRepository=nexus::default::http://3.110.94.186:8081/repository/maven-snapshots
           '''
         }
       }
