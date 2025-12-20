@@ -12,7 +12,7 @@ pipeline {
     ARTIFACT_ID = "my-java-app"
     VERSION     = "1.0-SNAPSHOT"
 
-    NEXUS_URL   = "http://3.110.94.186:8081"
+    NEXUS_URL   = "http://3.108.44.224:8081"
     NEXUS_REPO  = "maven-snapshots"
 
     DEPLOY_DIR  = "/opt/app"
@@ -64,7 +64,7 @@ pipeline {
           sh '''
             mvn deploy -DskipTests \
               -s $MAVEN_SETTINGS \
-              -DaltDeploymentRepository=nexus::default::http://3.110.94.186:8081/repository/maven-snapshots
+              -DaltDeploymentRepository=nexus::default::http://3.108.44.224:8081/repository/maven-snapshots
           '''
         }
       }
