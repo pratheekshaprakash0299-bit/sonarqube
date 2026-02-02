@@ -1,0 +1,84 @@
+pipeline {
+  agent any
+
+  tools {
+    jdk 'jdk17'
+    maven 'maven3'
+  }
+
+  environment {
+    PROJECT_KEY = "my-java-app"
+    PROJECT_NAME = "my-java-app"
+  }
+
+  stages {
+
+    stage('Checkout Source Code') {
+      steps {
+        checkout scm
+      }
+    }
+
+    stage('Build & Package') {
+      steps {
+        sh 'mvn clean package -DskipTests'
+      }
+    }
+
+    stage('SonarQube Analysis (Kubernetes)') {
+      steps {
+        withSonarQubeEnv('sonarqube-k8s') {
+          withCredentials([string(credentialsId: 'token-sonar', variable: 'SONAR_TOKEN')]) {
+            sh '''
+              mvn sonar:sonar \
+                -Dsonar.projectKey=${PROJECT_KEY} \
+                -Dsonar.projectName=${PROJECT_NAME} \
+                -Dsonar.token=${SONAR_TOKEN}
+            '''
+          }
+        }
+      }
+    }
+
+    stage('Quality Gate') {
+      steps {
+        timeout(time: 10, unit: 'MINUTES') {
+          waitForQualityGate abortPipeline: true
+        }
+      }
+    }
+
+    stage('Build Artifact (Final)') {
+      steps {
+        sh 'mvn clean package -DskipTests'
+        archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+      }
+    }
+
+    /*
+    OPTIONAL – Enable later if needed
+    stage('Upload Artifact to Nexus') {
+      steps {
+        configFileProvider([configFile(
+          fileId: 'nexus-settings',
+          variable: 'MAVEN_SETTINGS'
+        )]) {
+          sh '''
+            mvn deploy -DskipTests \
+              -s $MAVEN_SETTINGS
+          '''
+        }
+      }
+    }
+    */
+  }
+
+  post {
+    success {
+      echo "✅ CI PIPELINE SUCCESSFUL – SONARQUBE QUALITY GATE PASSED"
+    }
+    failure {
+      echo "❌ CI PIPELINE FAILED – CHECK SONARQUBE / BUILD LOGS"
+    }
+  }
+}
