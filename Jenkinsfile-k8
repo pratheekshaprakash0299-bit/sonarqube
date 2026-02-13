@@ -14,8 +14,6 @@ pipeline {
 
         NEXUS_URL   = "http://13.233.253.215:32524"
         NEXUS_REPO  = "maven-snapshots"
-
-        DEPLOY_DIR  = "/opt/app"
     }
 
     stages {
@@ -68,16 +66,30 @@ pipeline {
                     sh '''
                         mvn deploy -DskipTests \
                           -s $MAVEN_SETTINGS \
-                          -DaltDeploymentRepository=nexus::default::http://13.233.253.215:32524/repository/maven-snapshots
+                          -DaltDeploymentRepository=nexus::default::${NEXUS_URL}/repository/${NEXUS_REPO}
                     '''
                 }
+            }
+        }
+
+        stage('Download Artifact from Nexus') {
+            steps {
+                sh '''
+                  mvn dependency:get \
+                    -DrepoUrl=${NEXUS_URL}/repository/${NEXUS_REPO} \
+                    -DgroupId=${GROUP_ID} \
+                    -DartifactId=${ARTIFACT_ID} \
+                    -Dversion=${VERSION} \
+                    -Dpackaging=jar \
+                    -Ddest=target/app.jar
+                '''
             }
         }
     }
 
     post {
         success {
-            echo "✅ FULL PIPELINE SUCCESSFUL"
+            echo "✅ CI WITH NEXUS COMPLETED SUCCESSFULLY"
         }
         failure {
             echo "❌ PIPELINE FAILED"
