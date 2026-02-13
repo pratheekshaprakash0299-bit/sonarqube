@@ -14,6 +14,11 @@ pipeline {
 
         NEXUS_URL   = "http://65.0.73.203:32524"
         NEXUS_REPO  = "maven-snapshots"
+
+        AWS_REGION     = "ap-south-1"
+        AWS_ACCOUNT_ID = "220309168382"
+        ECR_REPO       = "my-java-app"
+        IMAGE_TAG      = "${BUILD_NUMBER}"
     }
 
     stages {
@@ -37,7 +42,7 @@ pipeline {
                         string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')
                     ]) {
                         sh '''
-                            mvn sonar:sonar \
+                            mvn org.sonarsource.scanner.maven:sonar-maven-plugin:4.0.0.4121:sonar \
                               -Dsonar.projectKey=${PROJECT_KEY} \
                               -Dsonar.projectName=${PROJECT_KEY} \
                               -Dsonar.token=$SONAR_TOKEN
@@ -72,20 +77,6 @@ pipeline {
             }
         }
 
-        stage('Download Artifact from Nexus') {
-            steps {
-                sh '''
-                  mvn dependency:get \
-                    -DrepoUrl=${NEXUS_URL}/repository/${NEXUS_REPO} \
-                    -DgroupId=${GROUP_ID} \
-                    -DartifactId=${ARTIFACT_ID} \
-                    -Dversion=${VERSION} \
-                    -Dpackaging=jar \
-                    -Ddest=target/app.jar
-                '''
-            }
-        }
-
         stage('Build Docker Image') {
             steps {
                 sh '''
@@ -94,11 +85,36 @@ pipeline {
                 '''
             }
         }
+
+        stage('Push Docker Image to ECR') {
+            steps {
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'aws-ecr-credentials'
+                ]]) {
+
+                    sh '''
+                        echo "Logging into Amazon ECR..."
+                        aws ecr get-login-password --region $AWS_REGION | \
+                        docker login --username AWS --password-stdin \
+                        $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+
+                        echo "Tagging Docker image..."
+                        docker tag ${PROJECT_KEY}:latest \
+                        $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/${ECR_REPO}:$IMAGE_TAG
+
+                        echo "Pushing Docker image..."
+                        docker push \
+                        $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/${ECR_REPO}:$IMAGE_TAG
+                    '''
+                }
+            }
+        }
     }
 
     post {
         success {
-            echo "✅ CI + Nexus + Docker Build Completed Successfully"
+            echo "✅ CI + Nexus + Docker + ECR Push Completed Successfully"
         }
         failure {
             echo "❌ PIPELINE FAILED"
