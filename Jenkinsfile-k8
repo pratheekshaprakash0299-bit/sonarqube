@@ -82,7 +82,7 @@ pipeline {
         stage('Download Artifact From Nexus') {
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: 'nexus-credentials',
+                    credentialsId: 'nexus-settings',
                     usernameVariable: 'NEXUS_USERNAME',
                     passwordVariable: 'NEXUS_PASSWORD'
                 )]) {
