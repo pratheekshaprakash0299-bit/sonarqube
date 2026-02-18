@@ -2,9 +2,10 @@ pipeline {
     agent any
 
     environment {
-        EC2_USER = "ec2-user"
-        EC2_HOST = "13.203.86.36"
-        APP_NAME = "java-app"
+        IMAGE_NAME = "sonarqube-project"
+        IMAGE_TAG  = "${BUILD_NUMBER}"
+        EC2_USER   = "ubuntu"
+        EC2_HOST   = "13.203.86.36"
     }
 
     stages {
@@ -16,16 +17,16 @@ pipeline {
             }
         }
 
-        stage('Build') {
+        stage('Docker Build') {
             steps {
                 sh '''
-                    echo "Building JAR..."
-                    mvn clean package -DskipTests
+                    echo "Building Docker Image..."
+                    docker build -t $IMAGE_NAME:$IMAGE_TAG .
                 '''
             }
         }
 
-        stage('Deploy to EC2') {
+        stage('Deploy on EC2') {
             steps {
                 withCredentials([
                     sshUserPrivateKey(
@@ -34,20 +35,18 @@ pipeline {
                     )
                 ]) {
                     sh '''
-                        echo "Copying files to EC2..."
+                        echo "Connecting to EC2..."
 
-                        scp -i $SSH_KEY -o StrictHostKeyChecking=no \
-                        target/*.jar Dockerfile \
-                        $EC2_USER@$EC2_HOST:/home/$EC2_USER/
+                        ssh -i $SSH_KEY -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST << EOF
 
-                        ssh -i $SSH_KEY -o StrictHostKeyChecking=no \
-                        $EC2_USER@$EC2_HOST << EOF
+                        echo "Stopping old container if exists..."
+                        docker stop $IMAGE_NAME || true
+                        docker rm $IMAGE_NAME || true
 
-                        docker stop $APP_NAME || true
-                        docker rm $APP_NAME || true
-
-                        docker build -t $APP_NAME .
-                        docker run -d -p 8080:8080 --name $APP_NAME $APP_NAME
+                        echo "Running new container..."
+                        docker run -d -p 8080:8080 \
+                        --name $IMAGE_NAME \
+                        $IMAGE_NAME:$IMAGE_TAG
 
                         EOF
                     '''
@@ -55,5 +54,13 @@ pipeline {
             }
         }
     }
-}
 
+    post {
+        success {
+            echo "✅ Deployment Successful"
+        }
+        failure {
+            echo "❌ Deployment Failed"
+        }
+    }
+}
